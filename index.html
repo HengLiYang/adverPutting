@@ -1,0 +1,302 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+	<title>Document</title>
+	<!-- 引入样式 -->
+	<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+	<style type="text/css">
+		[v-cloak] {
+			display: none;
+		}
+		.text {
+		    font-size: 14px;
+		  }
+
+		  .item {
+		    margin-bottom: 18px;
+		  }
+
+		  .clearfix:before,
+		  .clearfix:after {
+		    display: table;
+		    content: "";
+		  }
+		  .clearfix:after {
+		    clear: both
+		  }
+
+		  .box-card {
+		    width: 100%;
+		  }
+	</style>
+</head>
+
+<div style="width: 80%; margin: 20px auto 0 auto;" id="app" v-cloak>
+  <el-card class="box-card">
+	  <div slot="header" class="clearfix">
+	    <el-select v-model="value" placeholder="请选择">
+		    <el-option
+		      v-for="item in options"
+		      :key="item.value"
+		      :label="item.label"
+		      :value="item.value">
+		    </el-option>
+		  </el-select>
+	    <el-button type="primary" style="float: right;" size="small" @click="dialogVisible = true">上传广告</el-button>
+	  </div>
+	  <div class="text item" justify="end">
+	  	<el-row type='flex' justify='space-between' v-for="(item,index) in advertList" :key="index">
+			<el-col :span="16">{{ item.imgUrl }}</el-col>
+			<el-button :span="8" type="danger" plain class="right" @click="delateAd(item.id)">删除</el-button>
+		</el-row>
+	  </div>
+  </el-card>
+	
+
+
+
+
+
+
+  <el-dialog title="提示" :visible.sync="dialogVisible" :before-close="handleClose">
+	<el-form ref="uploadAdverForm" :model="form" label-width="80px">
+		  <el-form-item label="标题" prop='title' :rules="[
+      { required: true, message: '标题不能为空'}
+    ]">
+	    <el-input v-model="form.title"></el-input>
+	  </el-form-item>
+	  <el-form-item label="内容" prop="content"  :rules="[
+      { required: true, message: '内容不能为空'}
+    ]">
+	    <el-input v-model="form.content"></el-input>
+	  </el-form-item>
+	  <el-form-item label="跳转链接"  prop='link' :rules="[
+      { required: true, message: '跳转链接不能为空'}
+    ]">
+	    <el-input v-model="form.link"></el-input>
+	  </el-form-item>
+	  <el-form-item label="广告位置">
+	    <el-radio-group v-model="form.resource">
+	      <el-radio label="firstPage">App开始页</el-radio>
+	      <el-radio label="contentPage">首页顶部</el-radio>
+	    </el-radio-group>
+	  </el-form-item>
+	  <el-form-item label="图片/视频">
+	    
+		<el-upload
+		  :auto-upload="false"
+		  :action="importFileUrl"
+		  :data="upLoadData"
+		  class="upload-demo"
+		  :on-preview="handlePreview"
+		  :on-remove="handleRemove"
+		  :before-remove="beforeRemove"
+		  :on-change="beforeAvatarUpload"
+		  multiple
+		  :limit="1"
+		  :on-exceed="handleExceed"
+		  :file-list="fileList"
+		  :on-success="successUploadFile"
+		  :on-error="errorUploadFile"
+		  ref="upload"
+		  name="upload"
+		>
+		  <el-button size="small" type="primary">点击选择文件</el-button>
+		</el-upload>
+	  </el-form-item>
+	</el-form>
+  	<span slot="footer" class="dialog-footer">
+	    <el-button @click="dialogVisible = false">取 消</el-button>
+	    <el-button type="primary" @click="sureUploadAdver('uploadAdverForm')">确 定</el-button>
+  	</span>
+  </el-dialog>
+</div>
+
+<!-- import Vue before Element -->
+<script src="./assets/js/vue.min.js"></script>
+	<!-- 引入组件库 -->
+<script src="./assets/js/element.js"></script>
+<script src="./assets/js/axios.min.js"></script>
+ <script>
+    new Vue({
+      el: '#app',
+      data: function() {
+        return { 
+        	advertList: '',
+        	dialogVisible: false,
+        	fileList: [],
+        	options: [{
+	          value: 1,
+	          label: 'App开始页'
+	        }, {
+	          value: 2,
+	          label: '首页顶部'
+	        }],
+	        value: 1,
+        	form: {
+	          title: '',
+	          content: '',
+	          link: '',
+	          type: [],
+	          resource: 'firstPage',
+	          desc: ''
+	        },
+            importFileUrl: '/promo/manage/advertisement/upload'
+        }
+      },
+	  watch: {
+          urlPathComputed () {
+              this.getComputedist()
+		  }
+	  },
+      mounted () {
+      	this.getAppList();
+      },
+	  computed: {
+          urlPathComputed () {
+              if (this.value === 1) {
+                  return '/promo/manage/advertisement/getFirstPageAd'
+			  } else {
+                  return '/promo/manage/advertisement/getContentPageAds'
+			  }
+		  },
+          upLoadData () {
+              return {
+                  title: this.form.title,
+                  content: this.form.content,
+                  httpUrl: this.form.link,
+                  adType: this.form.resource
+			  }
+          }
+	  },
+      methods: {
+	      handleRemove(file, fileList) {
+	        console.log(file, fileList);
+	      },
+	      handlePreview(file) {
+	        console.log(file);
+	      },
+	      handleExceed(files, fileList, file) {
+	        this.$message.warning(`当前限制选择 1 个文件，本次选择了 ${files.length} 个文件，共选择了 ${files.length + fileList.length} 个文件`);
+	      },
+	      beforeRemove(file, fileList) {
+	        return this.$confirm(`确定移除 ${ file.name }？`);
+	      },
+          beforeAvatarUpload(file, fileList) {
+              const isLt2M = file.size / 1024 / 1024 < 20;
+              if (!isLt2M) {
+                  console.log('上传模板大小不能超过 20MB!');
+                  this.$message.warning('上传模板大小不能超过 20MB!');
+                  this.fileList.pop();
+              }
+		  },
+	      onSubmit() {
+	        console.log('submit!');
+	      },
+	      handleClose(done) {
+	        this.$confirm('确认关闭？')
+	          .then(_ => {
+	            done();
+	          })
+	          .catch(_ => {});
+	      },
+	      getAppList() {
+              let vm = this
+              axios.get('/promo/manage/advertisement/getFirstPageAd')
+			  .then(function (response) {
+					  vm.advertList =  [];
+					  vm.advertList.push(response.data)
+			  })
+			  .catch(function (error) {
+				  console.log(error)
+			  })
+	      },
+	      getComputedist() {
+              let vm = this
+              axios.get(vm.urlPathComputed)
+			  .then(function (response) {
+				  if (Object.prototype.toString.call(response.data) === '[object Array]') {
+					  vm.advertList = response.data;
+				  } else {
+					  vm.advertList =  [];
+					  vm.advertList.push(response.data)
+				  }
+			  })
+			  .catch(function (error) {
+				  console.log(error)
+			  })
+	      },
+		  // 删除广告
+	      delateAd(id) {
+              // /promo/manage/advertisement/delete
+              let vm = this
+              axios.post('/promo/manage/advertisement/delete',{
+                  id: id
+			  })
+			  .then(function (response) {
+				  if (response.data.isSuccess) {
+                      this.$message({
+                          message: '删除成功',
+                          type: 'success'
+                      })
+					  vm.getComputedist();
+				  } else {
+                      this.$message({
+                          message: '删除失败',
+                          type: 'success'
+                      })
+				  }
+			  })
+			  .catch(function (error) {
+				  console.log(error)
+			  })
+	      },
+          sureUploadAdver (formName) {
+              this.$refs[formName].validate((valid) => {
+                  if (valid) {
+                      if(this.fileList.length < 1) {
+                          this.$message({
+                              message: '上传文件不能为空',
+                              type: 'error'
+                          })
+						  return false
+					  }
+                      this.$refs.upload.submit()
+                  } else {
+                      console.log('error submit!!');
+                      return false;
+                  }
+              });
+		  },
+		  // 上传成功调用
+          successUploadFile(response, file, fileList) {
+	          console.log(response)
+			  if(response.isSuccess) {
+                  this.$message({
+                      message: response.message,
+                      type: 'success'
+                  })
+				  this.getComputedist();
+                  this.dialogVisible = false;
+              } else {
+                  this.$message({
+                      message: response.message,
+                      type: 'error'
+                  })
+			  }
+		  },
+		  // 上传失败调用
+          errorUploadFile(err, file ,fileList) {
+	          console.log(err)
+		  }
+	    }
+    })
+  </script>
+<script>
+	console.log(322342)
+</script>
+</body>
+</html>
